@@ -41,6 +41,26 @@ func (s *Store) Remove(vesselID uuid.UUID) {
 	s.mu.Unlock()
 }
 
+// Restore reinstates a previously observed signal state verbatim.
+func (s *Store) Restore(state model.SignalState) {
+	s.mu.Lock()
+	s.states[state.VesselID] = state
+	s.mu.Unlock()
+}
+
+// RemoveIfDraft deletes a vessel's signal only while it has not been given a
+// proceed aspect. Published proceed signals are never removed here.
+func (s *Store) RemoveIfDraft(vesselID uuid.UUID) bool {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	state, ok := s.states[vesselID]
+	if !ok || state.Aspect == model.SignalProceed {
+		return false
+	}
+	delete(s.states, vesselID)
+	return true
+}
+
 func (s *Store) List() []model.SignalState {
 	s.mu.RLock()
 	result := make([]model.SignalState, 0, len(s.states))

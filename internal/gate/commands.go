@@ -116,6 +116,19 @@ func (c *Commands) Pending(chamberID string) []model.DeviceCommand {
 	return pending
 }
 
+// AnyForCycle reports whether a device command has ever been issued for the
+// transit, including commands still queued: issuance itself starts equipment.
+func (c *Commands) AnyForCycle(cycleID uuid.UUID) bool {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+	for _, command := range c.byID {
+		if command.CycleID == cycleID {
+			return true
+		}
+	}
+	return false
+}
+
 func (c *Commands) Get(commandID uuid.UUID) (model.DeviceCommand, bool) {
 	c.mu.RLock()
 	command, ok := c.byID[commandID]

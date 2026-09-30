@@ -13,6 +13,9 @@ import (
 	"github.com/wyw14/cry-96/internal/model"
 )
 
+// ErrChamberBusy means a plan was queued but its chamber already runs a transit.
+var ErrChamberBusy = errors.New("chamber already has an active transit")
+
 // Coordinator is the authoritative owner of active transit generations.
 type Coordinator struct {
 	mu          sync.RWMutex
@@ -38,7 +41,7 @@ func (c *Coordinator) Start(ctx context.Context, plan model.ConvoyPlan) (model.T
 	c.mu.Lock()
 	if active, ok := c.current[plan.ChamberID]; ok && !active.Stage.Terminal() {
 		c.mu.Unlock()
-		return model.TransitCycle{}, errors.New("chamber already has an active transit")
+		return model.TransitCycle{}, ErrChamberBusy
 	}
 	c.generations[plan.ChamberID]++
 	cycleValue, err := model.NewTransitCycle(plan.ChamberID, plan.ID, plan.Direction, c.generations[plan.ChamberID], c.now())

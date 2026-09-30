@@ -53,6 +53,14 @@ th { color: #91a0a8; font-weight: 600; }
 .status.warning::before { background: #f2c14e; }
 .status.critical::before { background: #ef6f6c; }
 .message { min-height: 22px; color: #f2c14e; font-size: 13px; margin-top: 10px; white-space: pre-wrap; }
+.tag { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 12px; font-weight: 600; }
+.tag.ok { background: #1d4d3a; color: #88e0a0; border: 1px solid #2e7a58; }
+.tag.locked { background: #5a2d2d; color: #f0a0a0; border: 1px solid #8f3434; }
+.cell-note { margin-top: 4px; max-width: 230px; }
+.btn-inline { min-height: 28px; padding: 3px 10px; font-size: 12px; margin: 0 3px 3px 0; }
+.btn-inline.danger { border-color: #ef6f6c; background: #8f3434; }
+.revision { padding: 6px 0; border-bottom: 1px solid #2c3941; font-size: 13px; }
+[hidden] { display: none !important; }
 @media (max-width: 780px) {
   header { height: auto; padding: 14px 18px; align-items: flex-start; flex-direction: column; gap: 10px; }
   main { padding: 20px 16px 40px; }

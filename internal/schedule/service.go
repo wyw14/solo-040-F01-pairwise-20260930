@@ -38,6 +38,20 @@ func (s *Service) Cancel(ctx context.Context, planID uuid.UUID, note string, pub
 	return s.planner.Cancel(ctx, planID, note, s.publisher, publication)
 }
 
+func (s *Service) Revise(ctx context.Context, planID uuid.UUID, expectedVersion uint64, vessels []VesselRef, note string) (Revision, error) {
+	return s.planner.Revise(ctx, planID, expectedVersion, vessels, note)
+}
+
+func (s *Service) Detail(planID uuid.UUID) (model.ConvoyPlan, Amendability, []model.PlanRevision, bool) {
+	plan, decision := s.planner.Amendable(planID)
+	if decision.Code == DenyPlanNotFound {
+		return model.ConvoyPlan{}, Amendability{}, nil, false
+	}
+	return plan, decision, s.planner.Revisions(planID), true
+}
+
+func (s *Service) PlannerView() *Planner { return s.planner }
+
 func (s *Service) Active(chamberID string) []model.ConvoyPlan {
 	return s.planner.Active(chamberID)
 }

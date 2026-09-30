@@ -26,7 +26,9 @@ type ConvoyPlan struct {
 	ChamberID  string    `json:"chamber_id"`
 	Direction  Direction `json:"direction"`
 	Vessels    []Vessel  `json:"vessels"`
+	Version    uint64    `json:"version"`
 	CreatedAt  time.Time `json:"created_at"`
+	UpdatedAt  time.Time `json:"updated_at"`
 	Cancelled  bool      `json:"cancelled"`
 	CancelNote string    `json:"cancel_note,omitempty"`
 }
@@ -38,13 +40,35 @@ func NewConvoyPlan(chamberID string, direction Direction, vessels []Vessel, now 
 	copyOfVessels := append([]Vessel(nil), vessels...)
 	return ConvoyPlan{
 		ID: uuid.New(), ChamberID: chamberID, Direction: direction,
-		Vessels: copyOfVessels, CreatedAt: now.UTC(),
+		Vessels: copyOfVessels, Version: 1,
+		CreatedAt: now.UTC(), UpdatedAt: now.UTC(),
 	}, nil
 }
 
 func (p ConvoyPlan) Clone() ConvoyPlan {
 	p.Vessels = append([]Vessel(nil), p.Vessels...)
 	return p
+}
+
+// RevisionSummary describes how one amendment changed the vessel list.
+type RevisionSummary struct {
+	Added   int `json:"added"`
+	Removed int `json:"removed"`
+	Moved   int `json:"moved"`
+}
+
+// PlanRevision is an immutable snapshot of one plan version.
+type PlanRevision struct {
+	Version   uint64          `json:"version"`
+	Note      string          `json:"note,omitempty"`
+	ChangedAt time.Time       `json:"changed_at"`
+	Vessels   []Vessel        `json:"vessels"`
+	Summary   RevisionSummary `json:"summary"`
+}
+
+func (r PlanRevision) Clone() PlanRevision {
+	r.Vessels = append([]Vessel(nil), r.Vessels...)
+	return r
 }
 
 type Lease struct {

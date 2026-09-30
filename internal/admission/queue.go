@@ -73,6 +73,44 @@ func (q *Queue) RemovePlan(chamberID string, planID uuid.UUID) []QueueEntry {
 	return removed
 }
 
+// ReplacePlan swaps a queued plan's vessel block in place, keeping its
+// position relative to other plans. Released entries block the swap.
+func (q *Queue) ReplacePlan(chamberID string, planID uuid.UUID, vessels []model.Vessel) ([]QueueEntry, error) {
+	if chamberID == "" || planID == uuid.Nil || len(vessels) == 0 {
+		return nil, errors.New("queue replacement requires chamber, plan and vessels")
+	}
+	q.mu.Lock()
+	defer q.mu.Unlock()
+	entries := q.entries[chamberID]
+	kept := make([]QueueEntry, 0, len(entries))
+	insertAt := -1
+	var removed []QueueEntry
+	for _, entry := range entries {
+		if entry.PlanID == planID {
+			if insertAt == -1 {
+				insertAt = len(kept)
+			}
+			if entry.Released {
+				return nil, errors.New("released vessels cannot be reordered")
+			}
+			removed = append(removed, entry)
+		} else {
+			kept = append(kept, entry)
+		}
+	}
+	if insertAt == -1 {
+		return nil, errors.New("plan is not queued")
+	}
+	revised := make([]QueueEntry, 0, len(kept)+len(vessels))
+	revised = append(revised, kept[:insertAt]...)
+	for _, vessel := range vessels {
+		revised = append(revised, QueueEntry{Vessel: vessel, PlanID: planID})
+	}
+	revised = append(revised, kept[insertAt:]...)
+	q.entries[chamberID] = revised
+	return removed, nil
+}
+
 func (q *Queue) Restore(chamberID string, entries []QueueEntry) {
 	q.mu.Lock()
 	current := q.entries[chamberID]

@@ -17,9 +17,15 @@ import (
 type Planner struct {
 	mu        sync.RWMutex
 	plans     map[uuid.UUID]model.ConvoyPlan
+	revisions map[uuid.UUID][]model.PlanRevision
 	admission *admission.Service
 	recorder  *journal.Recorder
 	now       func() time.Time
+
+	transits  transitGuard
+	commands  commandGuard
+	equipment equipmentGuard
+	signals   signalGuard
 }
 
 func NewPlanner(admissionService *admission.Service, recorder *journal.Recorder, now func() time.Time) *Planner {
@@ -27,9 +33,20 @@ func NewPlanner(admissionService *admission.Service, recorder *journal.Recorder,
 		now = time.Now
 	}
 	return &Planner{
-		plans: make(map[uuid.UUID]model.ConvoyPlan), admission: admissionService,
-		recorder: recorder, now: now,
+		plans:     make(map[uuid.UUID]model.ConvoyPlan),
+		revisions: make(map[uuid.UUID][]model.PlanRevision),
+		admission: admissionService,
+		recorder:  recorder, now: now,
 	}
+}
+
+// BindGuards wires the runtime state consulted by amendment guards. It must be
+// called once after the cycle, gate, safety and signal components are built.
+func (p *Planner) BindGuards(transits transitGuard, commands commandGuard, equipment equipmentGuard, signals signalGuard) {
+	p.transits = transits
+	p.commands = commands
+	p.equipment = equipment
+	p.signals = signals
 }
 
 func (p *Planner) Create(ctx context.Context, chamberID string, direction model.Direction, vessels []model.Vessel) (model.ConvoyPlan, error) {
@@ -42,10 +59,15 @@ func (p *Planner) Create(ctx context.Context, chamberID string, direction model.
 	}
 	p.mu.Lock()
 	p.plans[plan.ID] = plan
+	p.revisions[plan.ID] = []model.PlanRevision{{
+		Version: plan.Version, ChangedAt: plan.CreatedAt,
+		Vessels: plan.Clone().Vessels,
+	}}
 	p.mu.Unlock()
 	if _, err := p.recorder.Record(ctx, chamberID, model.EventPlanCreated, plan.ID, 0, plan); err != nil {
 		p.mu.Lock()
 		delete(p.plans, plan.ID)
+		delete(p.revisions, plan.ID)
 		p.mu.Unlock()
 		p.admission.RemovePlan(chamberID, plan)
 		return model.ConvoyPlan{}, err

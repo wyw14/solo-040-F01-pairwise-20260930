@@ -45,6 +45,10 @@ func (s *Service) RemovePlan(chamberID string, plan model.ConvoyPlan) []QueueEnt
 	return s.controller.queue.RemovePlan(chamberID, plan.ID)
 }
 
+func (s *Service) ReplacePlan(chamberID string, plan model.ConvoyPlan) ([]QueueEntry, error) {
+	return s.controller.queue.ReplacePlan(chamberID, plan.ID, plan.Vessels)
+}
+
 func (s *Service) Restore(chamberID string, entries []QueueEntry) {
 	s.controller.queue.Restore(chamberID, entries)
 }
